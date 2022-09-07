@@ -87,9 +87,7 @@ def create_app(test_config=None):
             # Category queries
             categories = Category.query.all()
             formated_category = {category.id:category.type for category in categories}
-
-            # print(current_questions)
-            
+        
             for question in questions:
                 formatted_questions = {
                     "id": question.id,
@@ -100,7 +98,6 @@ def create_app(test_config=None):
                 }
             
                 # determines currentCategory
-
                 if formatted_questions.get('category') == 1:
                     currentCategory = "Science"
                 
@@ -176,8 +173,6 @@ def create_app(test_config=None):
             question = Question(question=new_question, answer=new_answer, difficulty=new_difficulty, category=new_category)
             question.insert()
 
-            print(question)
-
             return jsonify ({
                 "success": True,
                 "created": question.id,
@@ -206,13 +201,14 @@ def create_app(test_config=None):
             
             if len(search_result) > 0:
                 final_questions = paginate_questions(request, search_result)
-
+                print(final_questions)
                 return jsonify({
                     "success": True,
                     "questions": final_questions,
                     "total_questions": len(final_questions),
                     "current_category": None,
                 })
+                
             else:
                 return jsonify({
                     "success": True,
@@ -236,41 +232,26 @@ def create_app(test_config=None):
     def get_questions_by_category(category_id):
         questions = Question.query.filter(Question.category == category_id).all()
         paginated_questions = paginate_questions(request, questions)
-
-
-        for question in questions:
-            formatted_questions = {
-                'id': question.id,
-                'question': question.question,
-                'answers': question.answer,
-                'difficulty': question.difficulty,
-                'category': question.category,
-            }
-
-            if formatted_questions.get('category') == 1:
-                currentCategory = "Science"
-            
-            elif formatted_questions.get('category') == 2:
-                currentCategory = "Art"
-            
-            elif formatted_questions.get('category') == 3:
-                currentCategory = "Geography"
-            
-            elif formatted_questions.get('category') == 4:
-                currentCategory = "History"
-
-            elif formatted_questions.get('category') == 5:
-                currentCategory = "Entertainment"
-            
-            elif formatted_questions.get('category') == 6:
-                currentCategory = "Sports"
-            else:
-                abort(404)
+        
+        if category_id > 6:
+            abort(404)
+        elif category_id == 1:
+            currentCategory = "Science"  
+        elif category_id == 2:
+            currentCategory = "Art"      
+        elif category_id == 3:
+            currentCategory = "Geography"  
+        elif category_id == 4:
+            currentCategory = "History"
+        elif category_id == 5:
+            currentCategory = "Entertainment"         
+        elif category_id == 6:
+            currentCategory = "Sports"           
 
         return jsonify({
             "success": True,
             "questions": paginated_questions,
-            "totalQuestions": len(formatted_questions),
+            "totalQuestions": len(paginated_questions),
             "currentCategory": currentCategory,
         })
 
@@ -291,37 +272,33 @@ def create_app(test_config=None):
 
         get_previous_questions = body.get("previous_questions", None)
         get_quiz_category = body.get("quiz_category", None)
-        # print(get_quiz_category) prints {'type': 'Geography', 'id': '3'} and {'type': 'click', 'id': 0} when clicking on ALL
-        
-        previous_questions = []
+             
+        previous_question_list = []
 
         try:
             if get_quiz_category['id'] == 0:
                 questions = Question.query.filter(Question.id.notin_(get_previous_questions)).all()
                 next_question = random.choice(questions).format()
-                # print(questions)
                 num = next_question['id']
-                # print(num)
-                previous_questions.append(num)
+                previous_question_list.append(num)
 
             else:
                 questions = Question.query.filter(Question.id.notin_(get_previous_questions)).filter(Question.category == get_quiz_category['id']).all()
-                # print(questions)
                 next_question = random.choice(questions).format()
-                # print(next_question)
                 num = next_question['id']
-                # print(num)
-                previous_questions.append(num)
-
+                previous_question_list.append(num)
+            
             return jsonify({
                 "success": True,
                 "question": next_question,
             })
         except:
-            abort(422)
+            return jsonify({
+                "success": True,
+            })
 
     """
-    @TODO:
+    @DONE:
     Create error handlers for all expected errors
     including 404 and 422.
     """
@@ -357,5 +334,12 @@ def create_app(test_config=None):
             'message': 'method not allowed'
         }), 405
 
-    return app
+    @app.errorhandler(500)
+    def bad_request(error):
+        return jsonify({
+            "success": False,
+            "error": 500,
+            "message": 'internal server error'
+        }), 500
 
+    return app
